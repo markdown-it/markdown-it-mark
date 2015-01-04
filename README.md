@@ -8,7 +8,7 @@
 
 `==marked==` => `<mark>inserted</mark>`
 
-Markup uses the same conditions as CommonMark [emphasis](http://spec.commonmark.org/0.14/#emphasis-and-strong-emphasis).
+Markup uses the same conditions as CommonMark [emphasis](http://spec.commonmark.org/0.15/#emphasis-and-strong-emphasis).
 
 
 ## Install

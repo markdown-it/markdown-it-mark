@@ -36,6 +36,7 @@ function mark(state, silent) {
       found,
       stack,
       res,
+      token,
       max = state.posMax,
       start = state.pos,
       marker = state.src.charCodeAt(start);
@@ -92,9 +93,13 @@ function mark(state, silent) {
   state.pos = start + 2;
 
   // Earlier we checked !silent, but this implementation does not need it
-  state.push({ type: 'mark_open', level: state.level++ });
+  token        = state.push('mark_open', 'mark', 1);
+  token.markup = String.fromCharCode(marker) + String.fromCharCode(marker);
+
   state.md.inline.tokenize(state);
-  state.push({ type: 'mark_close', level: --state.level });
+
+  token        = state.push('mark_close', 'mark', -1);
+  token.markup = String.fromCharCode(marker) + String.fromCharCode(marker);
 
   state.pos = state.posMax + 2;
   state.posMax = max;
@@ -102,12 +107,6 @@ function mark(state, silent) {
 }
 
 
-function mark_open()  { return '<mark>'; }
-function mark_close() { return '</mark>'; }
-
-
 module.exports = function mark_plugin(md) {
   md.inline.ruler.before('emphasis', 'mark', mark);
-  md.renderer.rules.mark_open = mark_open;
-  md.renderer.rules.mark_close = mark_close;
 };

@@ -5,22 +5,52 @@
 // "start" should point at a valid marker
 function scanDelims(state, start) {
   var pos = start, lastChar, nextChar, count,
+      isLastWhiteSpace, isLastPunctChar,
+      isNextWhiteSpace, isNextPunctChar,
       can_open = true,
       can_close = true,
       max = state.posMax,
-      marker = state.src.charCodeAt(start);
+      marker = state.src.charCodeAt(start),
+      isWhiteSpace = state.md.utils.isWhiteSpace,
+      isPunctChar = state.md.utils.isPunctChar,
+      isMdAsciiPunct = state.md.utils.isMdAsciiPunct;
 
   lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
 
   while (pos < max && state.src.charCodeAt(pos) === marker) { pos++; }
-  if (pos >= max) { can_open = false; }
+
+  if (pos >= max) {
+    can_open = false;
+  }
+
   count = pos - start;
 
   nextChar = pos < max ? state.src.charCodeAt(pos) : -1;
 
-  // check whitespace conditions
-  if (nextChar === 0x20 || nextChar === 0x0A) { can_open = false; }
-  if (lastChar === 0x20 || lastChar === 0x0A) { can_close = false; }
+  isLastPunctChar = lastChar >= 0 &&
+    (isMdAsciiPunct(lastChar) || isPunctChar(String.fromCharCode(lastChar)));
+  isNextPunctChar = nextChar >= 0 &&
+    (isMdAsciiPunct(nextChar) || isPunctChar(String.fromCharCode(nextChar)));
+
+  // begin/end of the line counts as a whitespace too
+  isLastWhiteSpace = lastChar < 0 || isWhiteSpace(lastChar);
+  isNextWhiteSpace = nextChar < 0 || isWhiteSpace(nextChar);
+
+  if (isNextWhiteSpace) {
+    can_open = false;
+  } else if (isNextPunctChar) {
+    if (!(isLastWhiteSpace || isLastPunctChar)) {
+      can_open = false;
+    }
+  }
+
+  if (isLastWhiteSpace) {
+    can_close = false;
+  } else if (isLastPunctChar) {
+    if (!(isNextWhiteSpace || isNextPunctChar)) {
+      can_close = false;
+    }
+  }
 
   return {
     can_open: can_open,
@@ -28,6 +58,7 @@ function scanDelims(state, start) {
     delims: count
   };
 }
+
 
 function mark(state, silent) {
   var startCount,

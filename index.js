@@ -15,7 +15,8 @@ function scanDelims(state, start) {
       isPunctChar = state.md.utils.isPunctChar,
       isMdAsciiPunct = state.md.utils.isMdAsciiPunct;
 
-  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : -1;
+  // treat beginning of the line as a whitespace
+  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : 0x20;
 
   while (pos < max && state.src.charCodeAt(pos) === marker) { pos++; }
 
@@ -25,16 +26,14 @@ function scanDelims(state, start) {
 
   count = pos - start;
 
-  nextChar = pos < max ? state.src.charCodeAt(pos) : -1;
+  // treat end of the line as a whitespace
+  nextChar = pos < max ? state.src.charCodeAt(pos) : 0x20;
 
-  isLastPunctChar = lastChar >= 0 &&
-    (isMdAsciiPunct(lastChar) || isPunctChar(String.fromCharCode(lastChar)));
-  isNextPunctChar = nextChar >= 0 &&
-    (isMdAsciiPunct(nextChar) || isPunctChar(String.fromCharCode(nextChar)));
+  isLastPunctChar = isMdAsciiPunct(lastChar) || isPunctChar(String.fromCharCode(lastChar));
+  isNextPunctChar = isMdAsciiPunct(nextChar) || isPunctChar(String.fromCharCode(nextChar));
 
-  // begin/end of the line counts as a whitespace too
-  isLastWhiteSpace = lastChar < 0 || isWhiteSpace(lastChar);
-  isNextWhiteSpace = nextChar < 0 || isWhiteSpace(nextChar);
+  isLastWhiteSpace = isWhiteSpace(lastChar);
+  isNextWhiteSpace = isWhiteSpace(nextChar);
 
   if (isNextWhiteSpace) {
     can_open = false;

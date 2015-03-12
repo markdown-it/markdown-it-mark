@@ -6,6 +6,8 @@
 
 > `<mark>` tag plugin for [markdown-it](https://github.com/markdown-it/markdown-it) markdown parser.
 
+__v1.+ requires `markdown-it` v4.+, see changelog.__
+
 `==marked==` => `<mark>inserted</mark>`
 
 Markup uses the same conditions as CommonMark [emphasis](http://spec.commonmark.org/0.15/#emphasis-and-strong-emphasis).

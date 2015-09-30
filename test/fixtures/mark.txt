@@ -25,7 +25,7 @@ x ====foo====
 .
 x ===foo===
 .
-<p>x <mark>=foo=</mark></p>
+<p>x =<mark>foo</mark>=</p>
 .
 
 Marks have the same priority as emphases:
@@ -106,6 +106,17 @@ test==</p>
 test
 ==</p>
 .
+
+
+.
+x ==a ==foo===========bar== b==
+
+x ==a ==foo============bar== b==
+.
+<p>x <mark>a <mark>foo</mark></mark>===<mark><mark>bar</mark> b</mark></p>
+<p>x <mark>a <mark>foo</mark></mark>====<mark><mark>bar</mark> b</mark></p>
+.
+
 
 From CommonMark test suite, replacing `**` with our marker:
 

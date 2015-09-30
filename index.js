@@ -1,142 +1,120 @@
 'use strict';
 
 
-// parse sequence of markers,
-// "start" should point at a valid marker
-function scanDelims(state, start) {
-  var pos = start, lastChar, nextChar, count,
-      isLastWhiteSpace, isLastPunctChar,
-      isNextWhiteSpace, isNextPunctChar,
-      can_open = true,
-      can_close = true,
-      max = state.posMax,
-      marker = state.src.charCodeAt(start),
-      isWhiteSpace = state.md.utils.isWhiteSpace,
-      isPunctChar = state.md.utils.isPunctChar,
-      isMdAsciiPunct = state.md.utils.isMdAsciiPunct;
+module.exports = function ins_plugin(md) {
+  // Insert each marker as a separate text token, and add it to delimiter list
+  //
+  function tokenize(state, silent) {
+    var i, scanned, token, len, ch,
+        start = state.pos,
+        marker = state.src.charCodeAt(start);
 
-  // treat beginning of the line as a whitespace
-  lastChar = start > 0 ? state.src.charCodeAt(start - 1) : 0x20;
+    if (silent) { return false; }
 
-  while (pos < max && state.src.charCodeAt(pos) === marker) { pos++; }
+    if (marker !== 0x3D/* = */) { return false; }
 
-  if (pos >= max) {
-    can_open = false;
-  }
+    scanned = state.scanDelims(state.pos, true);
+    len = scanned.length;
+    ch = String.fromCharCode(marker);
 
-  count = pos - start;
+    if (len < 2) { return false; }
 
-  // treat end of the line as a whitespace
-  nextChar = pos < max ? state.src.charCodeAt(pos) : 0x20;
-
-  isLastPunctChar = isMdAsciiPunct(lastChar) || isPunctChar(String.fromCharCode(lastChar));
-  isNextPunctChar = isMdAsciiPunct(nextChar) || isPunctChar(String.fromCharCode(nextChar));
-
-  isLastWhiteSpace = isWhiteSpace(lastChar);
-  isNextWhiteSpace = isWhiteSpace(nextChar);
-
-  if (isNextWhiteSpace) {
-    can_open = false;
-  } else if (isNextPunctChar) {
-    if (!(isLastWhiteSpace || isLastPunctChar)) {
-      can_open = false;
+    if (len % 2) {
+      token         = state.push('text', '', 0);
+      token.content = ch;
+      len--;
     }
-  }
 
-  if (isLastWhiteSpace) {
-    can_close = false;
-  } else if (isLastPunctChar) {
-    if (!(isNextWhiteSpace || isNextPunctChar)) {
-      can_close = false;
+    for (i = 0; i < len; i += 2) {
+      token         = state.push('text', '', 0);
+      token.content = ch + ch;
+
+      state.delimiters.push({
+        marker: marker,
+        jump:   i,
+        token:  state.tokens.length - 1,
+        level:  state.level,
+        end:    -1,
+        open:   scanned.can_open,
+        close:  scanned.can_close
+      });
     }
-  }
 
-  return {
-    can_open: can_open,
-    can_close: can_close,
-    delims: count
-  };
-}
+    state.pos += scanned.length;
 
-
-function mark(state, silent) {
-  var startCount,
-      count,
-      tagCount,
-      found,
-      stack,
-      res,
-      token,
-      max = state.posMax,
-      start = state.pos,
-      marker = state.src.charCodeAt(start);
-
-  if (marker !== 0x3D/* = */) { return false; }
-  if (silent) { return false; } // don't run any pairs in validation mode
-
-  res = scanDelims(state, start);
-  startCount = res.delims;
-
-  if (!res.can_open) {
-    state.pos += startCount;
-    // Earlier we checked !silent, but this implementation does not need it
-    state.pending += state.src.slice(start, state.pos);
     return true;
   }
 
-  stack = Math.floor(startCount / 2);
-  if (stack <= 0) { return false; }
-  state.pos = start + startCount;
 
-  while (state.pos < max) {
-    if (state.src.charCodeAt(state.pos) === marker) {
-      res = scanDelims(state, state.pos);
-      count = res.delims;
-      tagCount = Math.floor(count / 2);
-      if (res.can_close) {
-        if (tagCount >= stack) {
-          state.pos += count - 2;
-          found = true;
-          break;
-        }
-        stack -= tagCount;
-        state.pos += count;
+  // Walk through delimiter list and replace text tokens with tags
+  //
+  function postProcess(state) {
+    var i, j,
+        startDelim,
+        endDelim,
+        token,
+        loneMarkers = [],
+        delimiters = state.delimiters,
+        max = state.delimiters.length;
+
+    for (i = 0; i < max; i++) {
+      startDelim = delimiters[i];
+
+      if (startDelim.marker !== 0x3D/* = */) {
         continue;
       }
 
-      if (res.can_open) { stack += tagCount; }
-      state.pos += count;
-      continue;
+      if (startDelim.end === -1) {
+        continue;
+      }
+
+      endDelim = delimiters[startDelim.end];
+
+      token         = state.tokens[startDelim.token];
+      token.type    = 'mark_open';
+      token.tag     = 'mark';
+      token.nesting = 1;
+      token.markup  = '==';
+      token.content = '';
+
+      token         = state.tokens[endDelim.token];
+      token.type    = 'mark_close';
+      token.tag     = 'mark';
+      token.nesting = -1;
+      token.markup  = '==';
+      token.content = '';
+
+      if (state.tokens[endDelim.token - 1].type === 'text' &&
+          state.tokens[endDelim.token - 1].content === '=') {
+
+        loneMarkers.push(endDelim.token - 1);
+      }
     }
 
-    state.md.inline.skipToken(state);
+    // If a marker sequence has an odd number of characters, it's splitted
+    // like this: `~~~~~` -> `~` + `~~` + `~~`, leaving one marker at the
+    // start of the sequence.
+    //
+    // So, we have to move all those markers after subsequent s_close tags.
+    //
+    while (loneMarkers.length) {
+      i = loneMarkers.pop();
+      j = i + 1;
+
+      while (j < state.tokens.length && state.tokens[j].type === 'mark_close') {
+        j++;
+      }
+
+      j--;
+
+      if (i !== j) {
+        token = state.tokens[j];
+        state.tokens[j] = state.tokens[i];
+        state.tokens[i] = token;
+      }
+    }
   }
 
-  if (!found) {
-    // parser failed to find ending tag, so it's not valid emphasis
-    state.pos = start;
-    return false;
-  }
-
-  // found!
-  state.posMax = state.pos;
-  state.pos = start + 2;
-
-  // Earlier we checked !silent, but this implementation does not need it
-  token        = state.push('mark_open', 'mark', 1);
-  token.markup = String.fromCharCode(marker) + String.fromCharCode(marker);
-
-  state.md.inline.tokenize(state);
-
-  token        = state.push('mark_close', 'mark', -1);
-  token.markup = String.fromCharCode(marker) + String.fromCharCode(marker);
-
-  state.pos = state.posMax + 2;
-  state.posMax = max;
-  return true;
-}
-
-
-module.exports = function mark_plugin(md) {
-  md.inline.ruler.before('emphasis', 'mark', mark);
+  md.inline.ruler.before('emphasis', 'mark', tokenize);
+  md.inline.ruler2.before('emphasis', 'mark', postProcess);
 };

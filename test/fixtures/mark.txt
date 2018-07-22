@@ -102,9 +102,8 @@ test
 == a</p>
 <p>==
 test==</p>
-<p>==
-test
-==</p>
+<h1>==
+test</h1>
 .
 
 

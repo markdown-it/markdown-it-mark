@@ -124,3 +124,11 @@ a=="foo"==
 .
 <p>a==&quot;foo&quot;==</p>
 .
+
+
+Should parse delimiters inside links:
+.
+[==foo==]()
+.
+<p><a href=""><mark>foo</mark></a></p>
+.

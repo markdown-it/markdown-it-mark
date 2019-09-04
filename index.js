@@ -29,11 +29,13 @@ module.exports = function ins_plugin(md) {
       token         = state.push('text', '', 0);
       token.content = ch + ch;
 
+      if (!scanned.can_open && !scanned.can_close) { continue; }
+
       state.delimiters.push({
         marker: marker,
+        length: 0, // disable "rule of 3" length checks meant for emphasis
         jump:   i,
         token:  state.tokens.length - 1,
-        level:  state.level,
         end:    -1,
         open:   scanned.can_open,
         close:  scanned.can_close
@@ -48,14 +50,13 @@ module.exports = function ins_plugin(md) {
 
   // Walk through delimiter list and replace text tokens with tags
   //
-  function postProcess(state) {
+  function postProcess(state, delimiters) {
     var i, j,
         startDelim,
         endDelim,
         token,
         loneMarkers = [],
-        delimiters = state.delimiters,
-        max = state.delimiters.length;
+        max = delimiters.length;
 
     for (i = 0; i < max; i++) {
       startDelim = delimiters[i];
@@ -116,5 +117,17 @@ module.exports = function ins_plugin(md) {
   }
 
   md.inline.ruler.before('emphasis', 'mark', tokenize);
-  md.inline.ruler2.before('emphasis', 'mark', postProcess);
+  md.inline.ruler2.before('emphasis', 'mark', function (state) {
+    var curr,
+        tokens_meta = state.tokens_meta,
+        max = (state.tokens_meta || []).length;
+
+    postProcess(state, state.delimiters);
+
+    for (curr = 0; curr < max; curr++) {
+      if (tokens_meta[curr] && tokens_meta[curr].delimiters) {
+        postProcess(state, tokens_meta[curr].delimiters);
+      }
+    }
+  });
 };

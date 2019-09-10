@@ -6,7 +6,7 @@
 
 > `<mark>` tag plugin for [markdown-it](https://github.com/markdown-it/markdown-it) markdown parser.
 
-__v2.+ requires `markdown-it` v5.+, see changelog.__
+__v3.+ requires `markdown-it` v10.+, see changelog.__
 
 `==marked==` => `<mark>inserted</mark>`
 

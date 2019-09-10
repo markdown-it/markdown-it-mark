@@ -1,4 +1,4 @@
-/*! markdown-it-mark 2.0.0 https://github.com//markdown-it/markdown-it-mark @license MIT */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.markdownitMark = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+/*! markdown-it-mark 3.0.0 https://github.com//markdown-it/markdown-it-mark @license MIT */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.markdownitMark = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 'use strict';
 
 
@@ -30,11 +30,13 @@ module.exports = function ins_plugin(md) {
       token         = state.push('text', '', 0);
       token.content = ch + ch;
 
+      if (!scanned.can_open && !scanned.can_close) { continue; }
+
       state.delimiters.push({
         marker: marker,
+        length: 0, // disable "rule of 3" length checks meant for emphasis
         jump:   i,
         token:  state.tokens.length - 1,
-        level:  state.level,
         end:    -1,
         open:   scanned.can_open,
         close:  scanned.can_close
@@ -49,14 +51,13 @@ module.exports = function ins_plugin(md) {
 
   // Walk through delimiter list and replace text tokens with tags
   //
-  function postProcess(state) {
+  function postProcess(state, delimiters) {
     var i, j,
         startDelim,
         endDelim,
         token,
         loneMarkers = [],
-        delimiters = state.delimiters,
-        max = state.delimiters.length;
+        max = delimiters.length;
 
     for (i = 0; i < max; i++) {
       startDelim = delimiters[i];
@@ -117,7 +118,19 @@ module.exports = function ins_plugin(md) {
   }
 
   md.inline.ruler.before('emphasis', 'mark', tokenize);
-  md.inline.ruler2.before('emphasis', 'mark', postProcess);
+  md.inline.ruler2.before('emphasis', 'mark', function (state) {
+    var curr,
+        tokens_meta = state.tokens_meta,
+        max = (state.tokens_meta || []).length;
+
+    postProcess(state, state.delimiters);
+
+    for (curr = 0; curr < max; curr++) {
+      if (tokens_meta[curr] && tokens_meta[curr].delimiters) {
+        postProcess(state, tokens_meta[curr].delimiters);
+      }
+    }
+  });
 };
 
 },{}]},{},[1])(1)

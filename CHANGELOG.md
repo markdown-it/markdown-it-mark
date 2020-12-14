@@ -1,3 +1,9 @@
+3.0.1 / WIP
+------------------
+
+- Fix incorrect parsing of long (4+ length) markers.
+
+
 3.0.0 / 2019-09-11
 ------------------
 

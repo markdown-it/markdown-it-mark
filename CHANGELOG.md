@@ -1,7 +1,8 @@
-3.0.1 / WIP
+3.0.1 / 2020-12-20
 ------------------
 
 - Fix incorrect parsing of long (4+ length) markers.
+- Upgrade build process.
 
 
 3.0.0 / 2019-09-11

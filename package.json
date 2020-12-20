@@ -10,6 +10,10 @@
   ],
   "repository": "markdown-it/markdown-it-mark",
   "license": "MIT",
+  "files": [
+    "index.js",
+    "dist/"
+  ],
   "scripts": {
     "test": "make test"
   },
